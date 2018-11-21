@@ -1,0 +1,27 @@
+First(E) = { a, b, ^, ( }
+First(E') = { +, ¦Å }
+First(T) = { a, b, ^, ( }
+First(T') = { a, b, ^, (, ¦Å }
+First(F) = { a, b, ^, ( }
+First(F') = { *, ¦Å }
+First(P) = { a, b, ^, ( }
+
+
+Follow(E) = { ), # }
+Follow(E') = { ), # }
+Follow(T) = { ), +, # }
+Follow(T') = { ), +, # }
+Follow(F) = { a, b, ^, (, ), +, # }
+Follow(F') = { a, b, ^, (, ), +, # }
+Follow(P) = { a, b, ^, (, ), +, *, # }
+
+
+     a         b         ^         (         )         +         *         #         
+E    E->TE'    E->TE'    E->TE'    E->TE'    error     error     error     error     
+E'   error     error     error     error     E'->¦Å    E'->+E    error     E'->¦Å    
+T    T->FT'    T->FT'    T->FT'    T->FT'    error     error     error     error     
+T'   T'->T     T'->T     T'->T     T'->T     T'->¦Å    T'->¦Å    error     T'->¦Å    
+F    F->PF'    F->PF'    F->PF'    F->PF'    error     error     error     error     
+F'   F'->¦Å    F'->¦Å    F'->¦Å    F'->¦Å    F'->¦Å    F'->¦Å    F'->*F'   F'->¦Å    
+P    P->a      P->b      P->^      P->(E)    error     error     error     error     
+
