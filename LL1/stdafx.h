@@ -12,7 +12,6 @@ using namespace std;
 #include<iomanip>
 
 
-
 //Data Structs
 typedef struct Node{
 	int num;
@@ -38,7 +37,9 @@ typedef struct Point
 }Point;
 
 
-//some common functions
+//****some common functions****
+
+//根据分隔符sc将字符串source分隔为一个字符串数组并返回
 vector<string> split(string source, string sc)
 {
 	vector<string> words;

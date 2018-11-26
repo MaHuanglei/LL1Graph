@@ -16,7 +16,7 @@ public:
 };
 
 
-//此函数只计算非终结符的FirstSet
+//此函数计算非终结符的FirstSet
 void FFSetCalculator::CalculateFirstSetsForGraph(Graph &graph)
 {
 	vector<vector<Rule>> exRules = graph.rules;
@@ -52,14 +52,11 @@ void FFSetCalculator::CalculateFirstSetsForGraph(Graph &graph)
 	}
 
 	vector<bool> tmp;
+	for (int j = 0; j < graph.endNodeSet.size(); j++)
+		tmp.push_back(false);
 	vector<vector<bool>> belongF;
 	for (int i = 0; i < graph.noEndNodeSet.size(); i++)
-	{
-		tmp.clear();
-		for (int j = 0; j < graph.endNodeSet.size(); j++)
-			tmp.push_back(false);
 		belongF.push_back(tmp);
-	}
 
 	Point point;
 	stack<Point> pStack;
@@ -83,6 +80,7 @@ void FFSetCalculator::CalculateFirstSetsForGraph(Graph &graph)
 
 		if (point.y == graph.epsilon.num)
 			continue;
+
 		for (int i = 0; i < exRules.size(); i++)
 		for (int j = 0; j < exRules[i].size(); j++)
 		{
@@ -109,6 +107,7 @@ void FFSetCalculator::CalculateFirstSetsForGraph(Graph &graph)
 	}
 }
 
+//此函数计算非终结符的FollowSet
 void FFSetCalculator::CalculateFollowSetsForGraph(Graph &graph)
 {
 	vector<bool> tmp;

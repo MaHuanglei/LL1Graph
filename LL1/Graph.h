@@ -1,4 +1,4 @@
-#include"stdafx.h"
+﻿#include"stdafx.h"
 
 #ifndef GRAPH_H
 #define GRAPH_H
@@ -7,43 +7,50 @@ class Graph{
 public:
 	string graphName;
 
-	vector<Node> endNodeSet;
-	vector<Node> noEndNodeSet;
-	Node beginNode;
-	vector<vector<Rule>> rules;
+	vector<Node> endNodeSet;	//终结符集
+	vector<Node> noEndNodeSet;	//非终结符集
+	Node beginNode;				//开始符号
+	vector<vector<Rule>> rules;	//产生式(同一非终结符的所有产生式占一行)
 
-	Node epsilon;
-	Node superEndNode;
-	vector<Set> firstSets;
-	vector<Set> followSets;
-	vector<vector<Point>> analyseTable;
+	Node epsilon;			//特殊节点标记 ε
+	Node superEndNode;		//特殊节点标记 # 
+	vector<Set> firstSets;		//First集数组
+	vector<Set> followSets;		//Follow集数组
+	vector<vector<Point>> analyseTable;		//分析表
 public:
-	Graph(){ };
-	~Graph();
+	Graph(){ }
+	~Graph();;
+	bool SetGFromFile(string fileName);		//从文件读取文法G
+	
+	void InitFirstSet();	//初始化firstSets
+	void InitFollowSet();	//初始化followSets
+	void InitAnalyseTable();	//初始化分析表
+	void CalculateAnalyseTable();	//计算分析表
 
-	bool SetGFromFile(string fileName);
-	bool CheckLeftRecursion();
-	void InitFirstSet();
-	bool CheckProduceRules();
-	void InitFollowSet();
-	bool CheckFFSet();
-	void InitAnalyseTable();
-	void CalculateAnalyseTable();
-	void PrintFFT();
-	void WriteFFTToFile(string fileName);
+	bool CheckLeftRecursion(Node &leftRecurNode);	//检查文法G是否满足LL1文法的条件一
+	bool CheckProduceRules(Node &errorNode);	//检查文法G是否满足LL1文法的条件二
+	bool CheckFFSet(Node &errorNode);		//检查文法G是否满足LL1文法的条件三
 
+	void PrintFFT();	//打印FFT信息到屏幕, FFT = First + Follow + analyseTable
+	void WriteFFTToFile(string fileName);	//打印FFT信息到文件
 
-	void MergeProduceRules();
-	Node GetNodeInfo(string nodeName);
-	bool FindRepeatNode(vector<vector<Node>> ve);
-	bool FindNode(vector<Node> ve, Node obj);
-	vector<Node> GetNodesFromStr(string nodeStr, bool &success);
+	//计算有序符号集ve的First集并返回，ve代表一个字符串
 	vector<Node> GetFirstSetOfRule(vector<Node> ve);
 
+	//1. 分析字符串nodeStr，将其转化终结符与非终结符的有序符号集并返回
+	//2. 若含有非法字符则置success为false，否则置success为true
+	vector<Node> GetNodesFromStr(string nodeStr, bool &success);
+
+//私有函数
 private:
-	void _PrintFirstSets(ostream *obj);
-	void _PrintFollowSets(ostream *obj);
-	void _PrintAnalyseTable(ostream *obj);
+	void _MergeAndSortProduceRules();	//将同一非终结符的所有产生式合并到一个vector<Rule>中
+	Node _GetNodeInfo(string nodeName);		//根据nodeName返回符号信息
+	void _PrintFirstSets(ostream *obj);		//使用obj打印First集信息
+	void _PrintFollowSets(ostream *obj);	//使用obj打印Follow集信息
+	void _PrintAnalyseTable(ostream *obj);	//使用obj打印分析表信息
+	bool _FindNode(vector<Node> ve, Node obj);		//检查容器ve是否包含obj
+	bool _FindRepeatNode(vector<vector<Node>> ve);	//检查二维容器ve是否有重复元素
+	vector<Node> _MergeTwoVector(vector<Node> &ve1, vector<Node> &ve2);	//return ve1+ve2
 };
 
 Graph::~Graph()
@@ -51,6 +58,9 @@ Graph::~Graph()
 	endNodeSet.clear();
 	noEndNodeSet.clear();
 	rules.clear();
+	firstSets.clear();
+	followSets.clear();
+	analyseTable.clear();
 }
 
 bool Graph::SetGFromFile(string fileName)
@@ -67,12 +77,12 @@ bool Graph::SetGFromFile(string fileName)
 
 	//1. read graph name
 	infile.getline(tmpLine, 200, '\n');
-	graphName = split(tmpLine, "��")[1];
+	graphName = split(tmpLine, "：")[1];
 
 	//2. read end nodes
 	epsilon.num = -1;
 	infile.getline(tmpLine, 200, '\n');
-	tmpStr = split(tmpLine, "��")[1];
+	tmpStr = split(tmpLine, "：")[1];
 	words = split(tmpStr, " ");
 	for (int i = 0; i < words.size(); i++)
 	{
@@ -81,13 +91,13 @@ bool Graph::SetGFromFile(string fileName)
 		tmpNode.name = words[i];
 		tmpNode.isEndNode = true;
 		endNodeSet.push_back(tmpNode);
-		if (epsilon.num == -1 && tmpNode.name == "��")
+		if (epsilon.num == -1 && tmpNode.name == "ε")
 			epsilon = tmpNode;
 	}
-	if (epsilon.num == -1) //if G has no �� then add �� weself;
+	if (epsilon.num == -1) //if G has no ε then add ε weself;
 	{
 		epsilon.num = endNodeSet.size();
-		epsilon.name = "��";
+		epsilon.name = "ε";
 		epsilon.isEndNode = true;
 		endNodeSet.push_back(epsilon);
 	} //add # as superEndNode weself;
@@ -97,7 +107,7 @@ bool Graph::SetGFromFile(string fileName)
 
 	//3. read noEnd nodes
 	infile.getline(tmpLine, 200, '\n');
-	tmpStr = split(tmpLine, "��")[1];
+	tmpStr = split(tmpLine, "：")[1];
 	words = split(tmpStr, " ");
 	for (int i = 0; i < words.size(); i++)
 	{
@@ -110,8 +120,8 @@ bool Graph::SetGFromFile(string fileName)
 
 	//4. read beginNode
 	infile.getline(tmpLine, 200, '\n');
-	tmpStr = split(tmpLine, "��")[1];
-	beginNode = GetNodeInfo(tmpStr);
+	tmpStr = split(tmpLine, "：")[1];
+	beginNode = _GetNodeInfo(tmpStr);
 
 	//5. read produce rules
 	infile.getline(tmpLine, 200, '\n');
@@ -120,7 +130,7 @@ bool Graph::SetGFromFile(string fileName)
 	{
 		vector<Rule> tmpVes;
 		words = split(tmpLine, "->");
-		Node left = GetNodeInfo(words[0]);
+		Node left = _GetNodeInfo(words[0]);
 		words = split(words[1], "|");
 		for (int i = 0; i < words.size(); i++)
 		{
@@ -142,22 +152,60 @@ bool Graph::SetGFromFile(string fileName)
 
 		infile.getline(tmpLine, 200, '\n');
 	}
-	MergeProduceRules();
+	_MergeAndSortProduceRules();
 
 	infile.close();
 	return true;
 }
 
-bool Graph::CheckLeftRecursion()
+bool Graph::CheckLeftRecursion(Node &leftRecurNode)
 {
-	for (int i = 0; i < rules.size(); i++)
+	int maxProduceNum = noEndNodeSet.size() + 1;
+
+	stack<vector<Node>> myStack;
+	stack<int> produceNumStack;
+	for (int i = 0; i < noEndNodeSet.size(); i++)
 	{
-		int ruleLeftNodeNum = rules[i][0].left.num;
+		Node left = noEndNodeSet[i];
 		for (int j = 0; j < rules[i].size(); j++)
 		{
-			if (rules[i][j].right[0].num == ruleLeftNodeNum)
+			myStack.push(rules[i][j].right);
+			produceNumStack.push(1);
+		}
+
+		int curProduceNum;
+		vector<Node> sentence;
+		while (!myStack.empty())
+		{
+			sentence = myStack.top();
+			myStack.pop();
+			curProduceNum = produceNumStack.top();
+			produceNumStack.pop();
+
+			if (curProduceNum > maxProduceNum)
+				continue;
+			if (sentence[0].isEndNode)
+				continue;
+			if (sentence[0].num == left.num)
 			{
+				leftRecurNode = left;
 				return false;
+			}
+
+			Node curFirstNodeOfSentence = sentence[0];
+			sentence.erase(sentence.begin());
+			vector<Node> newSentence;
+			for (int t = 0; t < rules[curFirstNodeOfSentence.num].size(); t++)
+			{
+				if (rules[curFirstNodeOfSentence.num][t].right[0].name != epsilon.name)
+					newSentence = _MergeTwoVector(rules[curFirstNodeOfSentence.num][t].right, sentence);
+				else newSentence = sentence;
+				if (!newSentence.empty())
+				{
+					myStack.push(newSentence);
+					produceNumStack.push(curProduceNum + 1);
+				}
+					
 			}
 		}
 	}
@@ -175,7 +223,7 @@ void Graph::InitFirstSet()
 	}
 }
 
-bool Graph::CheckProduceRules()
+bool Graph::CheckProduceRules(Node &errorNode)
 {
 	for (int i = 0; i < rules.size(); i++)
 	{
@@ -186,8 +234,11 @@ bool Graph::CheckProduceRules()
 		for (int j = 0; j < rules[i].size(); j++)
 			sonSets.push_back(GetFirstSetOfRule(rules[i][j].right));
 		
-		if (FindRepeatNode(sonSets))
+		if (_FindRepeatNode(sonSets))
+		{
+			errorNode = rules[i][0].left;
 			return false;
+		}
 	}
 
 	return true;
@@ -203,16 +254,19 @@ void Graph::InitFollowSet()
 	}
 }
 
-bool Graph::CheckFFSet()
+bool Graph::CheckFFSet(Node &errorNode)
 {
 	for (int i = 0; i < firstSets.size(); i++)
 	{
-		if (FindNode(firstSets[i].items, epsilon))
+		if (_FindNode(firstSets[i].items, epsilon))
 		{
 			for (int j = 0; j < followSets[i].items.size(); j++)
 			{
-				if (FindNode(firstSets[i].items, followSets[i].items[j]))
+				if (_FindNode(firstSets[i].items, followSets[i].items[j]))
+				{
+					errorNode = firstSets[i].owner;
 					return false;
+				}
 			}
 		}
 	}
@@ -279,61 +333,6 @@ void Graph::WriteFFTToFile(string fileName)
 	cout << "Write FFT to " << fileName << " successfully !\n\n";
 }
 
-
-
-
-
-
-
-void Graph::MergeProduceRules()
-{
-	for (int i = 0; i < rules.size(); i++)
-	{
-		Node left = rules[i][0].left;
-		for (int j = i+1;j<rules.size();j++)
-		{
-			if (left.num == rules[j][0].left.num)
-			{
-				for (int z = 0; z < rules[j].size(); ++z)
-					rules[i].push_back(rules[j][z]);
-				vector<vector<Rule>>::iterator it = rules.begin();
-				for (int z = 0; z < j; ++z, ++it);
-				rules.erase(it);
-				--j;
-			}
-		}
-	}
-}
-
-Node Graph::GetNodeInfo(string nodeName)
-{
-	Node node;
-	node.num = -1;
-	for (int i = 0; i < endNodeSet.size(); i++)
-	{
-		if (endNodeSet[i].name == nodeName)
-		{
-			node.num = i;
-			node.name = nodeName;
-			node.isEndNode = true;
-			return node;
-		}
-	}
-
-	for (int i = 0; i < noEndNodeSet.size(); i++)
-	{
-		if (noEndNodeSet[i].name == nodeName)
-		{
-			node.num = i;
-			node.name = nodeName;
-			node.isEndNode = false;
-			return node;
-		}
-	}
-
-	return node;
-}
-
 vector<Node> Graph::GetNodesFromStr(string nodeStr, bool &success)
 {
 	success = true;
@@ -348,7 +347,7 @@ vector<Node> Graph::GetNodesFromStr(string nodeStr, bool &success)
 		while (cur_len <= nodeStr.size())
 		{
 			nodeName += nodeStr[cur_len-1];
-			tmpNode = GetNodeInfo(nodeName);
+			tmpNode = _GetNodeInfo(nodeName);
 			if (tmpNode.num != -1)
 				node = tmpNode;
 			++cur_len;
@@ -381,47 +380,62 @@ vector<Node> Graph::GetFirstSetOfRule(vector<Node> ve)
 		for (int j = 0; j < firstSets[ve[i].num].items.size(); j++)
 			tempSet.push_back(firstSets[ve[i].num].items[j]);
 
-		if (!FindNode(firstSets[ve[i].num].items, epsilon))
+		if (!_FindNode(firstSets[ve[i].num].items, epsilon))
 			break;
 	}
 
 	return tempSet;
 }
 
-bool Graph::FindNode(vector<Node> ve, Node obj)
+void Graph::_MergeAndSortProduceRules()
 {
-	for (int j = 0; j < ve.size(); j++)
+	/*vector<Rule> tmpRuleRow;
+	for (vector<Node>::iterator t = noEndNodeSet.begin(); t < noEndNodeSet.end(); ++t)
 	{
-		if (ve[j].num == obj.num && ve[j].name == obj.name)
-			return true;
-	}
+		for (vector<vector<Rule>>::iterator i = rules.begin(); i < rules.end(); ++i)
+		{
+			if (*t.num == (*(*i).begin()).left.num)
+			{
+				for (vector<Rule>::iterator j = (*i).begin(); j < (*i).end(); ++j)
+				{
+					tmpRuleRow.push_back(*j);
+				}
+				i = rules.erase(i);
+			}
+		}
+		rules.insert()
+	}*/
 
-	return false;
-}
-
-bool Graph::FindRepeatNode(vector<vector<Node>> ve)
-{
-	vector<bool> flags;
-	for (int i = 0; i < endNodeSet.size(); i++)
-		flags.push_back(false);
-
-	for (int i = 0; i < ve.size();i++)
-	for (int j = 0; j < ve[i].size(); j++)
-	{
-		if (flags[ve[i][j].num])
-			return true;
-		else flags[ve[i][j].num] = true;
-	}
 	
-	return false;
+	for (int i = 0; i < rules.size(); i++)
+	{
+		Node left = rules[i][0].left;
+		for (int j = i + 1; j<rules.size(); j++)
+		{
+			if (left.num == rules[j][0].left.num)
+			{
+				for (int z = 0; z < rules[j].size(); ++z)
+					rules[i].push_back(rules[j][z]);
+				vector<vector<Rule>>::iterator it = rules.begin();
+				for (int z = 0; z < j; ++z, ++it);
+				rules.erase(it);
+				--j;
+			}
+		}
+	}
 }
 
 void Graph::_PrintFirstSets(ostream *obj)
 {
 	for (int i = 0; i < firstSets.size(); i++)
 	{
-		*obj << "First(" << firstSets[i].owner.name << ") = { ";
-		*obj << firstSets[i].items[0].name;
+		*obj << "First(" << firstSets[i].owner.name << ") = ";
+		if (firstSets[i].items.size() == 0) {
+			*obj << "Φ" << endl;
+			continue;
+		}
+
+		*obj << "{ " << firstSets[i].items[0].name;
 		for (int j = 1; j < firstSets[i].items.size(); j++)
 		{
 			*obj << ", " << firstSets[i].items[j].name;
@@ -435,8 +449,13 @@ void Graph::_PrintFollowSets(ostream *obj)
 {
 	for (int i = 0; i < followSets.size(); i++)
 	{
-		*obj << "Follow(" << followSets[i].owner.name << ") = { ";
-		*obj << followSets[i].items[0].name;
+		*obj << "Follow(" << followSets[i].owner.name << ") = ";
+		if (followSets[i].items.size() == 0) {
+			*obj << "Φ" << endl;
+			continue;
+		}
+
+		*obj << "{ " << followSets[i].items[0].name;
 		for (int j = 1; j < followSets[i].items.size(); j++)
 		{
 			*obj << ", " << followSets[i].items[j].name;
@@ -491,5 +510,69 @@ void Graph::_PrintAnalyseTable(ostream *obj)
 	(*obj).unsetf(ios::left);
 }
 
+Node Graph::_GetNodeInfo(string nodeName)
+{
+	Node node;
+	node.num = -1;
+	for (int i = 0; i < endNodeSet.size(); i++)
+	{
+		if (endNodeSet[i].name == nodeName)
+		{
+			node.num = i;
+			node.name = nodeName;
+			node.isEndNode = true;
+			return node;
+		}
+	}
+
+	for (int i = 0; i < noEndNodeSet.size(); i++)
+	{
+		if (noEndNodeSet[i].name == nodeName)
+		{
+			node.num = i;
+			node.name = nodeName;
+			node.isEndNode = false;
+			return node;
+		}
+	}
+
+	return node;
+}
+
+bool Graph::_FindNode(vector<Node> ve, Node obj)
+{
+	for (int j = 0; j < ve.size(); j++)
+	{
+		if (ve[j].num == obj.num && ve[j].name == obj.name)
+			return true;
+	}
+
+	return false;
+}
+
+bool Graph::_FindRepeatNode(vector<vector<Node>> ve)
+{
+	vector<bool> flags;
+	for (int i = 0; i < endNodeSet.size(); i++)
+		flags.push_back(false);
+
+	for (int i = 0; i < ve.size();i++)
+	for (int j = 0; j < ve[i].size(); j++)
+	{
+		if (flags[ve[i][j].num])
+			return true;
+		else flags[ve[i][j].num] = true;
+	}
+	
+	return false;
+}
+
+vector<Node> Graph::_MergeTwoVector(vector<Node> &ve1, vector<Node> &ve2)
+{
+	vector<Node> newVector(ve1);
+	for (int i = 0; i < ve2.size(); i++)
+		newVector.push_back(ve2[i]);
+	return newVector;
+}
 
 #endif

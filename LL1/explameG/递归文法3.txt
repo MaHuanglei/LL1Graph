@@ -1,0 +1,10 @@
+文法名称：G
+终结符VT：a b c d ε
+非终结符VN：S P Q R
+开始符号S：S
+产生式P：
+S->Pa|PQR|PSR
+P->b|Q
+Q->Rd|ab|ε
+R->cd
+endp

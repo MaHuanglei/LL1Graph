@@ -1,0 +1,13 @@
+文法名称：G
+终结符VT：a b c d e f g ( ) - + * / ε
+非终结符VN：E E' T T' F F' P
+开始符号S：E
+产生式P：
+E->TE'
+E'->+E|-E|*E|/E|ε
+T->FT'
+T'->T|ε
+F->PF'
+F'->*F'|ε
+P->(E)|a|b|^
+endp
